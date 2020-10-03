@@ -1,0 +1,64 @@
+#!/bin/bash
+installationroot="temp"
+pyvers3="$(equery l dev-lang/python | grep python-3 | sed 's/\(.*\)/=\1/g')"
+pyvers2="$(equery l dev-lang/python | grep python-2 | sed 's/\(.*\)/=\1/g')"
+if [ "$1" != "--postinstall" ]; then
+	rm -r $installationroot
+	mkdir -p $installationroot
+	mkdir -p docroot
+
+	export LINGUAS="en"
+	
+	quickpkg --include-config=y $*
+	#$pyvers2 $pyvers3
+	
+	export ROOT="$installationroot"
+	emerge --nodeps --oneshot -k $pyvers2 $pyvers3 $* || exit
+	emerge -1C $pyvers2 $pyvers3 &> /dev/null
+fi
+
+rm -r $installationroot/lib/modules
+
+rm $installationroot/usr/bin/2to3
+rm $installationroot/usr/bin/pydoc
+rm $installationroot/usr/bin/python*
+
+rm $installationroot/var/lib/portage/world
+rm $installationroot/etc/gconf/gconf.xml.defaults/%gconf-tree.xml
+rm -r $installationroot/usr/share/gtk-doc
+#rm -r $installationroot/etc/env.d/       
+rm -r $installationroot/etc/ld.so.cache  
+rm -r $installationroot/etc/ld.so.conf   
+rm -r $installationroot/etc/profile.env
+rm -r $installationroot/etc/csh.env
+rm -r $installationroot/etc/init.d/pydoc-*
+rm -r $installationroot/etc/conf.d/pydoc-*
+if [ 1 -gt "$(diff /etc/csh.env $installationroot/etc/csh.env | grep -c "^> ")" ]; then rm -r $installationroot/etc/csh.env; fi
+if [ 1 -gt "$(diff /etc/profile.env $installationroot/etc/profile.env | grep -c "^> ")" ]; then	rm -r $installationroot/etc/profile.env; fi
+rm -r $installationroot/tmp
+rm -r $installationroot/var/tmp
+rm -r $installationroot/var/cache
+rm -r $installationroot/var/lib/gentoo/news
+rm -r $installationroot/var/lib/portage
+
+rm -r $installationroot/usr/share/mime/mime.cache
+rm -r $installationroot/usr/share/applications/mimeinfo.cache
+mkdir -p $installationroot/usr/share/mime/pixielive
+mv $installationroot/usr/share/mime/aliases $installationroot/usr/share/mime/pixielive
+mv $installationroot/usr/share/mime/magic $installationroot/usr/share/mime/pixielive
+mv $installationroot/usr/share/mime/treemagic $installationroot/usr/share/mime/pixielive
+mv $installationroot/usr/share/mime/icons $installationroot/usr/share/mime/pixielive
+mv $installationroot/usr/share/mime/subclasses $installationroot/usr/share/mime/pixielive
+mv $installationroot/usr/share/mime/generic-icons $installationroot/usr/share/mime/pixielive
+mv $installationroot/usr/share/mime/types $installationroot/usr/share/mime/pixielive
+mv $installationroot/usr/share/mime/globs $installationroot/usr/share/mime/pixielive
+mv $installationroot/usr/share/mime/globs2 $installationroot/usr/share/mime/pixielive
+mv $installationroot/usr/share/mime/XMLnamespaces $installationroot/usr/share/mime/pixielive
+
+#./EliminaManInutili "$installationroot"
+#./Unbz2_all $installationroot/usr/share/man/
+docdir="$(mktemp -d)"
+mv $installationroot/usr/share/doc $docdir
+mv $docdir docroot
+find "$installationroot" -depth -type d -empty -exec rmdir {} \;
+#mkdir $installationroot/var/dependingModules

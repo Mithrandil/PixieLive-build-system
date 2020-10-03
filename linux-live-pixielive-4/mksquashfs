@@ -1,0 +1,7 @@
+#!/bin/bash
+if [ $# -ge 3 ]
+then
+	/usr/bin/mksquashfs_bin $1 $2 -comp xz $3 $4 $5 $6 $7 $8 $9
+else
+	/usr/bin/mksquashfs_bin $1 $2 -comp xz -b 256k	
+fi

@@ -1,0 +1,8 @@
+#!/bin/bash
+#kerneldir="$(ls -d /usr/src/linux-*)"
+rm kernel-sources.lzm
+rm -r kernelsources
+mkdir -p kernelsources/usr
+cp -a /usr/src kernelsources/usr
+mksquashfs kernelsources kernel-sources.lzm -comp xz -b 256k
+rm -r kernelsources

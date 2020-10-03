@@ -1,0 +1,72 @@
+#!/bin/sh
+# Initial script for Linux Live Kit
+# Author: Tomas M <http://www.linux-live.org/>
+# 
+# PixieLive custom version http://www.pixielive.org
+# Modified by: Christian Lorandi
+#
+
+export PATH=.:/:/usr/sbin:/usr/bin:/sbin:/bin
+
+. /lib/.config
+. /lib/livekitlib
+
+transfer_initramfs
+
+MEMORY=/memory
+CHANGES=$MEMORY/changes
+LIVECHANGES=$MEMORY/live_changes
+UNION=$MEMORY/union
+DATAMNT=$MEMORY/data
+BUNDLES=$MEMORY/bundles
+RAMFS=$MEMORY/ramfs
+
+# Save Settings Aufs Tree
+SSAUFS=$MEMORY/.settings_aufs
+
+USERNAME="pixielive"
+
+header "Live Kit init <http://www.linux-live.org/>"
+
+init_proc_sysfs
+
+debug_start
+                                                                                                                                                       debug_shell
+init_devs
+init_aufs
+
+#disabled by Christian Lorandi
+#init_zram
+
+# find data dir with filesystem bundles
+DATA="$(find_data 60 "$DATAMNT")"
+                                                                                                                                                      debug_shell
+# setup persistent changes, if possible
+persistent_changes "$DATA" "$CHANGES" "$LIVECHANGES" "$SSAUFS"
+                                                                                                                                                      debug_shell
+# copy to RAM if needed
+DATA="$(copy_to_ram "$DATA" "$CHANGES")"
+                                                                                                                                                      debug_shell
+# init aufs union
+init_union "$CHANGES" "$UNION" "$RAMFS" "$SSAUFS"
+                                                                                                                                                      debug_shell
+# add data to union
+union_append_bundles "$DATA" "$BUNDLES" "$UNION"                                                                                                                                                      debug_shell
+
+# mount binds from the pendrive to the home
+mount_binds "$DATA" "$UNION" "$USERNAME"
+
+# mount mount_live_changes_binds
+mount_live_changes_binds "$LIVECHANGES" "$UNION" "$USERNAME"
+                                                                                                                                                      debug_shell
+# rootcopy
+copy_rootcopy_content "$DATA" "$UNION"
+
+# create empty fstab
+fstab_create "$UNION"
+                                                                                                                                                      debug_shell
+header "Live Kit done, starting $LIVEKITNAME"
+change_root "$UNION"
+
+header "!!ERROR occured, you shouldn't be here.!!"
+/bin/sh
