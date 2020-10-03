@@ -1,0 +1,2 @@
+CFLAGS="${CFLAGS} -mssse3"
+CXXFLAGS="${CFLAGS}"

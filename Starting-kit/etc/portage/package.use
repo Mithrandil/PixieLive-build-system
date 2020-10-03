@@ -1,0 +1,98 @@
+dev-python/PyQt4 sql webkit 
+#media-gfx/imagemagick -svg
+#net-im/pidgin -gstreamer -networkmanager -ncurses -perl -startup-notification
+sys-auth/pambase consolekit
+#dev-vcs/git -perl
+net-im/skype -qt-static
+gnome-extra/nautilus-sendto -bluetooth -pidgin -mail
+media-libs/libgphoto2 -zeroconf
+media-video/ffmpeg amr rtmp schroedinger faac faad x264
+media-video/vlc aac -nsplugin amr rtmp schroedinger threads a52 cdda libproxy live mtp stream x264
+sys-apps/gnome-disk-utility fat
+media-libs/gegl -ffmpeg
+
+sys-fs/aufs3 fuse kernel-patch ramfs
+
+www-client/firefox -crashreporter
+
+sys-devel/gcc -gtk
+dev-vcs/git -gtk
+
+#net-p2p/deluge webinterface
+
+media-sound/rhythmbox -nsplugin 
+
+x11-libs/gtk+ -cups
+
+net-libs/libproxy -networkmanager
+
+#required by sys-fs/udisks-1.0.4-r2, required by sys-apps/gnome-disk-utility-3.0.2-r200, required by gnome-base/gvfs-1.10.1, required by gnome-base/nautilus-2.32.2.1-r2, required by app-text/evince-2.32.0-r4[nautilus], required by evince (argument)
+sys-fs/udev hwdb
+
+media-video/ffmpeg -bindist
+
+sys-block/gparted dmraid fat hfs jfs mdadm ntfs reiser4 reiserfs xfs
+
+
+net-libs/libpcap libnl
+net-analyzer/wireshark gcrypt smi geoip kerberos ares threads lua
+
+sys-apps/dbus X
+
+#required by media-gfx/darktable
+media-libs/libraw demosaic
+media-gfx/exiv2 xmp
+
+dev-vcs/git -python -subversion -perl -gpg -curl -webdav
+sys-libs/zlib minizip
+
+dev-lang/python sqlite
+
+app-arch/p7zip -rar
+
+sys-process/lsof -ipv6
+
+app-editors/emacs -X -alsa -gtk -imagemagick
+app-emacs/emacs-common-gentoo -X
+
+app-text/poppler qt4
+
+sys-process/procps ncurses
+sys-apps/util-linux ncurses
+
+x11-drivers/ati-drivers disable-watermark qt4
+
+net-print/gutenprint foomaticdb ppds
+
+=dev-libs/ecore-1.7.5 curl
+
+app-text/hunspell linguas_it linguas_fr linguas_en linguas_es linguas_de linguas_pt linguas_ru
+app-text/aspell linguas_it linguas_fr linguas_en linguas_es linguas_de linguas_pt linguas_ru
+app-office/libreoffice -vba -nsplugin -java libreoffice_extensions_pdfimport libreoffice_extensions_presenter-console libreoffice_extensions_presenter-minimizer
+
+net-print/cups -java
+dev-java/icedtea-bin -cups
+
+media-libs/libjpeg-turbo -java
+
+#www-client/chromium system-ffmpeg
+media-video/ffmpeg opus
+
+# required by x11-wm/enlightenment-0.17.3[enlightenment_modules_shot]
+# required by enlightenment (argument)
+>=dev-libs/ecore-1.7.8 curl
+
+dev-libs/botan threads
+
+net-analyzer/wireshark -gtk3 -qt4 gtk2
+
+media-gfx/inkscape -spell
+x11-drivers/xf86-video-intel -sna uxa
+
+gnome-extra/gnome-screensaver -opengl
+
+sci-mathematics/octave curl gnuplot fftw hdf5 postscript
+
+sci-libs/hdf5 -threads
+
+x11-misc/bumblebee video_cards_nvidia video_cards_nouveau

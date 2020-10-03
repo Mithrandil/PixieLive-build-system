@@ -1,0 +1,81 @@
+net-im/skype
+sys-fs/aufs3
+sys-fs/squashfs-tools
+sys-kernel/gentoo-sources
+
+sys-kernel/aufs-sources
+sys-fs/aufs-headers
+sys-fs/aufs-util
+
+net-wireless/b43-fwcutter
+
+app-emulation/wine
+
+app-text/winefish
+
+app-benchmarks/gtkperf
+
+app-emulation/vmware-tools ~x86
+#required by x11-base/xorg-drivers-1.10, required by x11-base/xorg-server-1.10.6-r1, required by x11-drivers/xf86-video-vesa-2.3.1
+=x11-drivers/xf86-input-wacom-0.16.1 ~x86
+net-dns/avahi
+=dev-python/gst-python-0.10.22
+
+#x11-drivers/ati-drivers ~x86
+=gnome-base/gnome-applets-2.32.1.1-r2 ~x86
+
+media-gfx/darktable ~x86
+
+net-misc/dropbox ~x86
+gnome-extra/nautilus-dropbox ~x86
+
+#app-office/texstudio ~x86
+
+=x11-wm/enlightenment-0.17.4 ~x86
+
+x11-plugins/pidgin-facebookchat
+
+net-wireless/reaver ~x86
+
+media-libs/lcms
+media-libs/tiff
+
+www-client/firefox ~x86
+# required by x11-wm/enlightenment-0.17.4
+# required by enlightenment (argument)
+=dev-libs/e_dbus-1.7.8 ~x86
+# required by x11-wm/enlightenment-0.17.4
+# required by enlightenment (argument)
+=dev-libs/eina-1.7.8 ~x86
+# required by x11-wm/enlightenment-0.17.4
+# required by enlightenment (argument)
+=dev-libs/ecore-1.7.9_pre2 ~x86
+# required by @__auto_rebuild__ (argument)
+=media-libs/edje-1.7.8 ~x86
+# required by x11-wm/enlightenment-0.17.4
+# required by enlightenment (argument)
+=dev-libs/eeze-1.7.8 ~x86
+# required by @__auto_rebuild__ (argument)
+=dev-libs/eet-1.7.8 ~x86
+# required by @__auto_rebuild__ (argument)
+=dev-libs/efreet-1.7.8 ~x86
+# required by media-libs/edje-1.7.8
+# required by x11-wm/enlightenment-0.17.4
+# required by enlightenment (argument)
+=dev-libs/embryo-1.7.8 ~x86
+# required by x11-wm/enlightenment-0.17.4
+# required by enlightenment (argument)
+=dev-libs/eio-1.7.8 ~x86
+# required by x11-wm/enlightenment-0.17.4
+# required by enlightenment (argument)
+=media-libs/evas-1.7.9_pre2 ~x86
+
+# required by x11-misc/bumblebee
+sys-power/bbswitch ~x86
+x11-misc/virtualgl ~x86
+x11-misc/bumblebee ~x86
+
+=media-video/smplayer-0.8.6 ~x86
+games-strategy/hedgewars ~x86
+
+mail-client/claws-mail-gtkhtml ~x86

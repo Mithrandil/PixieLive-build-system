@@ -1,0 +1,33 @@
+#!/sbin/runscript
+# Copyright (c) 2007-2009 Roy Marples <roy@marples.name>
+# Released under the 2-clause BSD license.
+
+description="Last cleanup before live shutdown"
+
+start()
+{
+   ebegin "Killing Last Processes"
+   /bin/sync
+   PARENT=`cat /proc/$PPID/status | grep PPid | grep -o "[0-9]*"`
+   for pid in $(/mnt/live/bin/ps | grep -v "PID" | grep -E -v "\[.*\]" | grep -E -v "mount|posixovl|fuse" | sed -r "s/^ +//" | cut -d " " -f 1); do
+      if [ $pid -lt $PARENT ]; then
+         LIST="$LIST $pid"
+      fi
+   done
+
+   kill -15 $LIST 2>/dev/null # SIGTERM
+   sleep 2 # give processes some time to end properly
+   kill -9 $LIST 2>/dev/null # SIGKILL
+   eend 0
+
+   #ebegin "Opening a shell"
+   #/bin/bash
+   #eend 0
+
+   ACTION=poweroff
+   yesno $RC_REBOOT && ACTION=reboot
+
+   ebegin "Last Cleanup Starting"
+   exec /mnt/live/lib/cleanup --start $ACTION
+   eend 0
+}

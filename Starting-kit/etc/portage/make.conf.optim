@@ -1,0 +1,41 @@
+# These settings were set by the catalyst build script that automatically
+# built this stage.
+# Please consult /usr/share/portage/config/make.conf.example for a more
+# detailed example.
+CHOST="i686-pc-linux-gnu"
+CFLAGS="-O2 -march=core2 -mtune=generic -fomit-frame-pointer -pipe -mssse3 -mfpmath=sse"
+CXXFLAGS="${CFLAGS}"
+MAKEOPTS="-j5"
+EMERGE_DEFAULT_OPTS="--quiet-build -v"
+#EMERGE_DEFAULT_OPTS="-v"
+#VIDEO_CARDS="vesa intel radeon nv nvidia flgrx nouveau fglrx sis radeonhd fbdev"
+VIDEO_CARDS="vesa intel radeon nv nouveau sis radeonhd fbdev r100 r200 r300 r600 i915 i965"
+INPUT_DEVICES="evdev keyboard mouse synaptics wacom"
+LINGUAS="en"
+USE="X acpi alsa apng avahi bindist bluetooth cairo chm connection-sharing cpudetection css cups dbus
+     device-mapper dhcpcd djvu dvd ebook exif extras ffmpeg flac fuse gallium gdu gnome-keyring 
+     icu imagemagick iphone ipod jpeg kernel-patch laptop libva lzma madwifi matroska mmx mng mp3 mp4
+     mpeg nautilus network autoipd networkmanager nokia nsplugin nss ogg opengl pdf pdfimport png 
+     pidgin policykit python qt3support ramfs rar raw rtsp smp sse symlink
+     sse2 sse3 ssse3 theora tiff tordns udev upnp usb vaapi vdpau vorbis wifi win32codecs wps
+     x264 xetex xvid zeroconf zip 
+     -clucene -doc -handbook -mysql -hal
+     samba gstreamer libnotify sqlite java
+     svg  gnome gtk gtk3 gphoto2
+     g3dvl hwdb gudev
+     -branding smpeg mad 
+     -plasma -wallpapers mdnsresponder-compat declarative -semantic-desktop
+     -espeak -ncurses -xscreensaver -connman
+     spell lcms glamor gbm threads" 
+CAMERAS="canon directory fuji konica mustek ricoh samsung ptp2"
+PORTDIR_OVERLAY="/usr/local/portage"
+ACCEPT_LICENSE="*"
+KDIR=/usr/src/linux
+#PORTAGE_ELOG_SYSTEM="save_summary"
+#FEATURES="nodoc noinfo fail-clean parallel-fetch"
+FEATURES="nodoc noinfo parallel-fetch"
+#PORTAGE_TMPDIR="/var/tmp"
+CONFIG_PROTECT="-*"
+ENLIGHTENMENT_MODULES="backlight battery clock comp conf-applications conf-dialogs conf-display conf-edgebindings conf-interaction conf-intl conf-keybindings conf-menus conf-paths conf-performance conf-randr conf-shelves conf-theme conf-window-manipulation conf-window-remembers cpufreq dropshadow everything fileman fileman-opinfo gadman ibar ibox illume2 mixer msgbus notification pager quickaccess start syscon systray tasks temperature tiling winlist wizard xkbswitch shot"
+PORTAGE_COMPRESS=""
+
