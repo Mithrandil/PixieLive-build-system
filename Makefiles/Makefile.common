@@ -1,0 +1,477 @@
+.PHONY: deepclean clean clean_kernelpackages
+
+
+include Makefile.live
+	
+pixielive: live fuse-exfat zip_tools X network_drivers gnome openbox encfs startx_tools cryptsetup package_reduction
+	@make mounts > /dev/null
+	make pixielive_config
+	make emgd
+	$(install) gentoolkit
+	$(inroot) revdep-rebuild -i -- -b
+	#$(inroot) python-updater
+	$(inroot) env-update
+	$(inroot) equery l "*" > installed_packages.list
+	sed -i 's/no_umounts_r="^(\$$no_umounts_r)\$$"/no_umounts_r="^(\$$no_umounts_r|.*\\.lzm|.*\\.LZM)\$$"/' $(CHROOT)/etc/init.d/localmount
+	sed -i 's/\(^stop().*\)/\1\n\t\/bin\/sync\n\t\/bin\/sleep 1/' $(CHROOT)/etc/init.d/xdm
+	@echo "$@ DONE"
+	@touch $@
+	
+package_reduction:
+	$(install) -1 hyphen libpng:0 libpng:1.2 pciutils freeglut qttest json-glib graphite2 gd lensfun mhash hunspell qtsvg libvpx gst-python libevent libwpg net-misc/curl libsdl lcms gtkspell:2 gpgme app-crypt/gnupg liberation-fonts exiv2
+	$(install) -1 virtual/fortran virtual/blas sci-libs/blas-reference sci-libs/ufconfig sci-libs/colamd
+	@touch $@
+	
+$(CHROOT)_base: pixielive
+	make icon-cache
+	@make umount > /dev/null
+	rm -fr $(CHROOT)_base
+	cp -a $(CHROOT) $(CHROOT)_base
+	@make mounts > /dev/null
+	@touch $(CHROOT)_base
+	
+icon-cache: pixielive
+	@make mounts > /dev/null
+	rm -f $(CHROOT)/usr/share/icons/*/icon-theme.cache
+	for i in `find $(CHROOT)/usr/share/icons/ -type d -name scalable`; do rm -r "$$i"; done
+	#$(inroot) gtk-update-icon-cache -fi /usr/share/icons/gnome/
+	#$(inroot) gtk-update-icon-cache -fi /usr/share/icons/Faenza/	
+	
+all: pixielive $(CHROOT)_base networkanalysis internet latex lyx gnuplot tor graphics editors benchmarks office R multimedia wine utils rdesktop xvkbd nvidia-drivers ati-drivers thunderbird claws-mail freemind dropbox calibre texmaker texstudio games docky enlightenment qt-creator arduino gnome-screensaver octave smplayer
+#all: pixielive $(CHROOT)_base networkanalysis internet latex lyx gnuplot tor graphics editors benchmarks office R multimedia wine utils rdesktop xvkbd ati-drivers thunderbird claws-mail freemind dropbox calibre texmaker texstudio games docky enlightenment qt-creator arduino gnome-screensaver octave
+	#make nvidia-drivers
+	#make virtualbox-guest
+	make final-updates
+	@touch $@
+
+btrfs:
+	$(install) sys-fs/btrfs-progs
+	@touch btrfs
+
+snapper: btrfs
+	$(install) snapper sys-fs/btrfs-progs
+	@touch snapper
+
+final-updates: pixielive $(CHROOT_BASE)
+	@make mounts > /dev/null
+	$(inroot) env-update
+	$(inroot) locale-gen
+	$(inroot) revdep-rebuild -i -- -b
+	#$(inroot) python-updater
+	$(inroot) depmod -a `ls $(CHROOT)/lib/modules`
+	./Differences
+	@touch $@
+	
+fuse-exfat:
+	@make mounts > /dev/null
+	$(install) fuse-exfat
+	@touch $@
+	
+octave: X
+	@make mounts > /dev/null
+	$(install) octave
+	@touch $@
+	
+gnome-screensaver: gnome
+	@make mounts > /dev/null
+	$(install) gnome-screensaver
+	@touch $@
+
+dropbox: X
+	@make mounts > /dev/null
+	$(install) dropbox 
+	#$(install) nautilus-dropbox
+	@touch $@
+
+encfs: kernel
+	@make mounts > /dev/null
+	$(install) encfs
+	@touch $@
+	
+cryptsetup: kernel
+	@make mounts > /dev/null
+	$(install) cryptsetup
+	@touch $@
+	
+qt-creator: X
+	@make mounts > /dev/null
+	$(install) qt-creator
+	@touch $@
+	
+freemind: X java
+	@make mounts > /dev/null
+	$(install) freemind
+	@touch $@
+	
+gok: X gnome
+	@make mounts > /dev/null
+	$(install) gok
+	@touch $@
+
+enlightenment: X gnome
+	@make mounts > /dev/null
+	#$(install) --autounmask-write enlightenment
+	$(install) enlightenment setxkbmap
+	@touch $@
+	
+docky: X gnome
+	@make mounts > /dev/null
+	$(install) docky dockmanager
+	@touch $@
+	
+xvkbd: X
+	@make mounts > /dev/null
+	$(install) xvkbd
+	@touch $@
+	
+thunderbird: X
+	@make mounts > /dev/null
+	$(install) thunderbird
+	@touch $@
+	
+claws-mail: X
+	@make mounts > /dev/null
+	$(install) claws-mail claws-mail-gtkhtml claws-mail-notification
+	@touch $@
+	
+calibre: X
+	@make mounts > /dev/null
+	$(install) calibre
+	@touch $@
+
+rdesktop: X
+	@make mounts > /dev/null
+	$(install) rdesktop
+	$(install) freerdp
+	@touch $@
+
+nvidia-drivers: X
+	@make mounts > /dev/null
+	$(install) nvidia-drivers
+	if [ -z "`grep 'x11-base/xorg-drivers video_cards_nvidia' $(CHROOT)/etc/portage/package.use`" ]; then echo "x11-base/xorg-drivers video_cards_nvidia" >> $(CHROOT)/etc/portage/package.use; fi
+	$(install) bumblebee
+	sed -i 's/\(^Driver=.*\)/#\1/g' $(CHROOT)/etc/bumblebee/bumblebee.conf
+	$(inroot) usermod -a -G bumblebee pixielive
+	@touch $@
+
+ati-drivers: X
+	@make mounts > /dev/null
+	$(install) ati-drivers
+	@touch $@
+
+games: pixielive
+	@make mounts > /dev/null
+	$(install) zsnes wesnoth xf86-input-joystick crack-attack
+	$(install) hedgewars
+	$(inroot) usermod -a -G games pixielive
+	@touch $@
+	
+networkanalysis: pixielive
+	@make mounts > /dev/null
+	$(install) wireshark aircrack-ng ettercap nmap kismet metasploit macchanger netkit-telnetd reaver
+	$(inroot) usermod -a -G wireshark pixielive
+	@touch $@
+	
+internet: pixielive firefox adobe-flash
+	@make mounts > /dev/null
+	$(install) -u skype pidgin pidgin-facebookchat deluge filezilla liferea
+	$(install) -u opera
+	$(install) -u chromium
+	@touch $@
+	
+latex: pixielive
+	@make mounts > /dev/null
+	$(install) winefish dos2unix texlive
+	$(inroot) texmf-update
+	@touch $@
+	
+lyx: latex
+	@make mounts > /dev/null
+	$(install) lyx
+	@touch $@
+	
+gnuplot:
+	@make mounts > /dev/null
+	$(install) sci-visualization/gnuplot
+	@touch $@    
+	
+texmaker: latex
+	@make mounts > /dev/null
+	$(install) texmaker
+	@touch $@
+	
+texstudio: latex
+	@make mounts > /dev/null
+	$(install) texstudio
+	@touch $@
+	
+tor: pixielive
+	@make mounts > /dev/null
+	$(install) tor polipo
+	@touch $@
+	
+graphics: pixielive
+	@make mounts > /dev/null
+	#$(install) gimp inkscape gqview gtkam
+	$(install) gimp inkscape geeqie gtkam
+	$(install) darktable
+	$(install) scribus
+	@touch $@
+	
+editors: pixielive
+	@make mounts > /dev/null
+	$(install) emacs gvim
+	@touch $@
+	
+benchmarks: pixielive 
+	@make mounts > /dev/null
+	$(install) gtkperf mesa-progs
+	@touch $@
+	
+office: pixielive
+	@make mounts > /dev/null
+	$(install) libreoffice gnumeric
+	$(install) osmo
+	@touch $@
+	
+R: pixielive
+	@make mounts > /dev/null
+	$(install) R
+	@touch $@
+	
+multimedia: pixielive
+	@make mounts > /dev/null
+	$(install) audacity cheese rhythmbox
+	@touch $@
+
+wine: pixielive
+	@make mounts > /dev/null
+	$(install) wine
+	@touch $@
+
+utils: pixielive
+	@make mounts > /dev/null
+	$(install) gparted partimage gnome-themes gnome-utils powertop strace
+	@touch $@
+	
+virtualbox-guest: pixielive
+	@make mounts > /dev/null
+	$(install) virtualbox-guest-additions xf86-video-virtualbox
+	@touch $@	
+
+arduino: pixielive
+	@make mounts > /dev/null
+	$(install) arduino
+	$(inroot) usermod -a -G uucp pixielive
+	$(inroot) usermod -a -G tty pixielive
+	@touch $@	
+		
+#---------------Start of preliminary steps-------------------------------------
+
+
+	
+#---------------End of preliminary steps---------------------------------------
+
+#---------------Start of chroot building---------------------------------------
+	
+zip_tools: base_root
+	@make mounts > /dev/null
+	USE="-rar" $(install) zip unrar p7zip
+	@touch $@
+
+X: kernel
+	@make mounts > /dev/null
+	#$(inroot) wget -c `cat /tmp/sun-jdk-download-link` -P /usr/portage/distfiles
+	#false
+	USE="-java" $(install) -u xorg-server corefonts ttf-bitstream-vera urw-fonts freefonts dbus
+	#USE="-java" $(install) -u xorg-server xf86-video-modesetting corefonts ttf-bitstream-vera urw-fonts freefonts dbus
+	#USE="-java" $(install) --autounmask-write -u xorg-server corefonts ttf-bitstream-vera urw-fonts freefonts dbus
+	@touch $@
+	
+network_drivers: base_root kernel
+	@make mounts > /dev/null
+	USE="-extras action_modeswitch" $(install) b43-fwcutter usb_modeswitch udev
+	#$(inroot) wget http://downloads.openwrt.org/sources/broadcom-wl-4.178.10.4.tar.bz2 -O /tmp/broadcom-wl-4.178.10.4.tar.bz2
+	
+	#$(inroot) wget http://pixielive.org/development_packages/broadcom-wl-4.178.10.4.tar.bz2 -O /tmp/broadcom-wl-4.178.10.4.tar.bz2
+	#$(inroot) rm -rf /tmp/broadcom-wl-4.178.10.4
+	#$(inroot) tar -xf /tmp/broadcom-wl-4.178.10.4.tar.bz2 -C /tmp
+	#$(inroot) b43-fwcutter -w /lib/firmware /tmp/broadcom-wl-4.178.10.4/linux/wl_apsta.o
+	#$(inroot) rm -rf /tmp/broadcom-wl-4.178.10.4*
+
+	$(inroot) wget http://www.lwfinger.com/b43-firmware/broadcom-wl-5.100.138.tar.bz2 -O /tmp/broadcom-wl-5.100.138.tar.bz2
+	$(inroot) rm -rf /tmp/broadcom-wl-5.100.138
+	$(inroot) tar -xf /tmp/broadcom-wl-5.100.138.tar.bz2 -C /tmp
+	$(inroot) mkdir -p /lib/firmware
+	$(inroot) b43-fwcutter -w /lib/firmware /tmp/broadcom-wl-5.100.138/linux/wl_apsta.o
+	$(inroot) rm -rf /tmp/broadcom-wl-5.100.138*
+	@touch $@
+	
+gnome: X java
+	@make mounts > /dev/null
+	#$(install) -u util-linux rfkill xinput laptop-mode-tools alacarte nautilus gnome-desktop gnome-control-center gcalctool file-roller gdm gtkdialog
+	$(install) -u util-linux rfkill xinput laptop-mode-tools alacarte nautilus gnome-desktop \
+	gnome-control-center gcalctool =file-roller-2.32.2 gdm gtkdialog \
+	evince gnome-session gnome-applets gnome-panel gnome-menus faenza-icon-theme gnome-terminal gnome-themes zenity \
+	startup-notification gnome-nettool gnome-power-manager gconf-editor gedit gnome-keyring gnome-media \
+	net-misc/networkmanager-openvpn net-misc/networkmanager-pptp net-misc/networkmanager-vpnc gnome-bluetooth nm-applet yasm \
+	virtual/glu eselect-opencl psutils lua
+	$(inroot) rc-update add laptop_mode default
+	$(inroot) rc-update add bluetooth default
+	@touch $@
+	
+java:
+	@make mounts > /dev/null
+#@$(inroot) wget `emerge -pf --nodeps sun-jdk 2>&1 | grep -o "http\S*"` -O /tmp/sun-jdk-download.html
+#@$(inroot) grep -o "http\S*`emerge -pf --nodeps sun-jdk 2>&1 | grep -o "\S*\.bin"`" /tmp/sun-jdk-download.html > /tmp/sun-jdk-download-link
+	
+#	@if test ! -e `$(inroot) emerge -pf --nodeps sun-jdk 2>&1 | grep -o "\S*\.bin"`; then \
+#	echo -e "\n\nFile `$(inroot) emerge -pf --nodeps sun-jdk 2>&1 | grep -o "\S*\.bin"` MUST be downloaded manually at:\n\
+#	`$(inroot) emerge -pf --nodeps sun-jdk 2>&1 | grep -o "http\S*"`\n\
+#	to $(PWD)\n\n"; \
+#	if test -f `$(inroot) emerge -pf --nodeps sun-jdk 2>&1 | grep -o "\S*\.bin"`; then \
+#	cp -f `$(inroot) emerge -pf --nodeps sun-jdk 2>&1 | grep -o "\S*\.bin"` $(CHROOT)/usr/portage/distfiles; \
+#	else \
+#	false; \
+#	fi \
+#	fi
+#	$(install) sun-jdk
+#	$(install) jre
+	$(install) dev-java/icedtea-bin
+	@touch $@
+	
+libreoffice: X
+	@make mounts > /dev/null
+	$(install) libreoffice
+	@touch $@
+
+firefox: X
+	@make mounts > /dev/null
+	$(install) firefox
+	@touch $@
+	
+adobe-flash: X
+	@make mounts > /dev/null
+	$(install) www-plugins/chrome-binary-plugins
+	$(install) www-plugins/freshplayerplugin
+	#$(install) adobe-flash
+	@touch $@	
+	
+openbox: X
+	@make mounts > /dev/null
+	$(install) openbox obconf
+	$(inroot) update-mime-database /usr/share/mime
+	$(inroot) update-desktop-database /usr/share/applications
+	@touch $@
+
+smplayer: X
+	@make mounts > /dev/null
+	$(install) --nodeps smplayer
+	@touch $@	
+	
+emgd: X
+	@make mounts > /dev/null
+	#$(inroot) wget http://pixielive.org/development_packages/emgd_1.14_drm_kernel_3.4.5.tgz -O /tmp/emgd_1.14_drm_kernel_3.4.5.tgz
+	#$(inroot) rm -rf /tmp/emgd_1.14_drm_kernel_3.4.5
+	#$(inroot) tar -xf /tmp/emgd_1.14_drm_kernel_3.4.5.tgz -C /tmp
+	#$(inroot) /bin/bash -c "cd /tmp/emgd_1.14_drm_kernel_3.4.5; make clean && make -j5 && make install"
+	#$(inroot) wget $(dropbox_dir)/emgd_1.14_drm_kernel_3.6.6.tar.gz -O /tmp/emgd_1.14_drm_kernel_3.6.6.tgz
+	#$(inroot) rm -rf /tmp/emgd_1.14_drm_kernel_3.6.6
+	#$(inroot) tar -xf /tmp/emgd_1.14_drm_kernel_3.6.6.tgz -C /tmp
+	#$(inroot) /bin/bash -c "cd /tmp/emgd_1.14_drm_kernel_3.6.6; make clean && make -j5 && make install"
+#	$(inroot) wget $(dropbox_dir)/emgd_1.16_drm.tar.xz -O /tmp/emgd_1.16_drm.tar.xz
+#	$(inroot) rm -rf /tmp/emgd_1.16_drm
+#	$(inroot) tar -xf /tmp/emgd_1.16_drm.tar.xz -C /tmp
+#	$(inroot) /bin/bash -c "cd /tmp/emgd_1.16_drm; make clean && make -j5 && make install"
+	$(inroot) wget $(dropbox_dir)/emgd_1.18_drm.tar.bz2 -O /tmp/emgd_1.18_drm.tar.bz2
+	$(inroot) rm -rf /tmp/emgd_1.18_drm
+	$(inroot) tar -xf /tmp/emgd_1.18_drm.tar.bz2 -C /tmp
+	$(inroot) /bin/bash -c "cd /tmp/emgd_1.18_drm; make clean && make -j5 && make install"
+
+
+startx_tools: X
+	@make mounts > /dev/null
+	$(install) xterm xclock twm
+	@touch $@
+	
+include Makefile.pkgs
+	
+include Makefile.server
+	
+#---------------End of chroot building-----------------------------------------
+
+#---------------Start Config---------------------------------------------------
+
+user:
+	$(inroot) useradd -m -G users,plugdev,disk,wheel,floppy,audio,cdrom,tape,video,cdrw,usb,tty,uucp pixielive; \
+
+
+pixielive_config:
+	if test ! -f pixielive_config; then \
+	if test -d $(CONFIG_DIR)/usr; \
+	then \
+	cp -r $(CONFIG_DIR)/usr $(CHROOT)/; \
+	fi; \
+	$(inroot) useradd -m -G users,plugdev,disk,wheel,floppy,audio,cdrom,tape,video,cdrw,usb pixielive || exit 1; \
+	echo "pixielive:pixielive" | $(inroot) chpasswd; \
+	$(inroot) sed -i 's/DISPLAYMANAGER="\S*"/DISPLAYMANAGER="gdm"/g' /etc/conf.d/xdm; \
+	$(inroot) sed -i 's/HOSTNAME="\S*"/HOSTNAME="pixielive"/g' /etc/conf.d/hostname; \
+	#echo -e 'pixielive pixielive=NOPASSWD:/usr/bin/activate\npixielive pixielive=NOPASSWD:/usr/bin/deactivate\npixielive pixielive=NOPASSWD:/bin/rm /mnt/live/mnt*\npixielive pixielive=NOPASSWD:/usr/bin/mksquashfs /tmp/* */modules/*\npixielive pixielive=NOPASSWD:/usr/bin/mksquashfs /tmp/* */optional/*\npixielive pixielive=NOPASSWD:/usr/bin/mksquashfs /tmp/* */settings/*' >> $(CHROOT)/etc/sudoers; \
+	echo -e 'pixielive pixielive=NOPASSWD:/mnt/live/pixielive3_save_changes.sh *' >> $(CHROOT)/etc/sudoers; \
+	#$(inroot) gtk-update-icon-cache -f /usr/share/icons/hicolor/; \
+	$(inroot) sed -i 's/\[daemon\]/[daemon]\nAutomaticLoginEnable=true\nAutomaticLogin=pixielive/' /etc/X11/gdm/custom.conf; \
+	#$(inroot) sed -i 's/Compressor\slzf/Compressor lzo/g' /etc/hibernate/tuxonice.conf; \
+	$(inroot) sed -i 's/auth_admin_keep/yes/g' /usr/share/polkit-1/actions/org.gnome.cpufreqselector.policy; \
+	$(inroot) sed -i 's/<!-- End Office -->/<!-- End Office -->\n<!-- PixieLive -->\n\t<Menu>\n\t\t<Name>PixieLive Settings<\/Name>\n\t\t<Directory>PixieLive.directory<\/Directory>\n\t\t<Include>\n\t\t\t<And>\n\t\t\t\t<Category>PixieLive<\/Category>\n\t\t\t<\/And>\n\t\t<\/Include>\n\t<\/Menu> <!-- End PixieLive -->/' /etc/xdg/menus/gnome-applications.menu; \
+	echo -e "[Desktop Entry]\nName=PixieLive Settings\nComment=Save Your Settings\nIcon=applications-utilities\nType=Directory" > $(CHROOT)/usr/share/desktop-directories/PixieLive.directory; \
+	fi
+	touch $@
+	
+#---------------End Config-----------------------------------------------------
+
+#---------------Utilities------------------------------------------------------
+	
+include Makefile.build
+	
+clean: umount umount_base
+	@make clean_kernel
+	@make clean_live
+	@make clean_base
+	@make clean_server
+	rm -f X network_drivers ntfs3g pixielive_config  gnome java live pixielive zip_tools mksquashfs 
+	rm -f openbox emgd adobe-flash firefox libreoffice icewm lyx
+	rm -f networkanalysis games internet latex tor graphics editors benchmarks office R multimedia wine utils virtualbox-guest all
+	rm -f nvidia-drivers ati-drivers
+	rm -f differences.txt differences_only_diff.sh
+	rm -f gnuplot final-updates calibre rdesktop thunderbird claws-mail gok freemind dropbox
+	rm -f docky enlightenment texstudio texmaker encfs cryptsetup startx_tools qt-creator xvkbd
+	rm -f arduino gnome-screensaver octave smplayer
+	
+deepclean: umount umount_base clean
+	rm -f latest-stage3.txt
+	rm -f portage-latest.tar.bz2
+#	rm -fr portage
+	rm -fr $(CHROOT)
+	rm -fr $(CHROOT)_base
+	rm -fr $(CHROOT)_mod
+	rm -rf $(LINUXLIVEDIR)
+	rm -f package_reduction
+	rm -f differences_only_diff.sh
+	rm -f installed_packages.list
+	rm -rf quickpkgs_$(ARCH)
+
+eclean:	stage3 etc_config profile_config
+	@make mounts
+	$(inroot) eclean-dist
+	$(inroot) eclean-pkg	
+	
+#-------------image creation-----------------------------------
+
+include Makefile.image
+
+#-------------CONFIG-HOME----------------------------------------
+
+confighome:
+	$(inroot) rc-update add acpid boot
+	$(inroot) eselect opengl set ati
+	$(inroot) /opt/bin/aticonfig --initial

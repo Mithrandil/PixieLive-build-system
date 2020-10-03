@@ -1,0 +1,84 @@
+NAME = PixieLive4
+ROOTDIR = newroot_x86_base/tmp/$(NAME)-data/
+RAW_IMAGE = $(PWD)/image.raw
+VMDK_IMAGE = $(PWD)/image.vmdk
+VDI_IMAGE = $(PWD)/image.vdi
+DISK_SIZE = 2.2G
+
+.PHONY: .PHONY vdi vmdk raw $(RAW_IMAGE) image clean_images
+
+virtualbox-drivers:
+	@make mounts > /dev/null
+	FEATURES="-nodoc" $(install) xf86-video-virtualbox virtualbox-guest-additions
+	#inserire la configurazione di xorg.conf
+	$(inroot) cp /usr/share/doc/virtualbox-guest-additions-*/xorg.conf.vbox /etc/X11/xorg.conf
+	$(inroot) rc-update add virtualbox-guest-additions default
+	@touch $@
+
+raw: $(RAW_IMAGE)
+
+image: $(RAW_IMAGE)
+
+$(RAW_IMAGE)_base:
+	qemu-img create -f raw $@ $(DISK_SIZE)
+	losetup /dev/loop1 $@
+	parted -s $@ mklabel msdos
+	parted -s $@ mkpart primary 1 $(DISK_SIZE)
+	parted -s $@ set 1 boot on
+	losetup -o `parted $@ unit B print | grep "\s\s*1\s\s*.*" | sed 's/\s*1\s\s*\([0-9]*\)B\s.*/\1/'` /dev/loop2 /dev/loop1
+	mkfs.ext3 /dev/loop2
+	sync
+	sleep 3
+	losetup -d /dev/loop2
+	sleep 3
+	losetup -d /dev/loop1
+
+$(RAW_IMAGE): $(RAW_IMAGE)_base
+	#qemu-img create -f raw $(RAW_IMAGE) $(DISK_SIZE)
+	#losetup /dev/loop1 $(RAW_IMAGE)
+	#parted -s $(RAW_IMAGE) mklabel msdos
+	#parted -s $(RAW_IMAGE) mkpart primary 1 $(DISK_SIZE)
+	#parted -s $(RAW_IMAGE) set 1 boot on
+	#losetup -o `parted $(RAW_IMAGE) unit B print | grep "\s\s*1\s\s*.*" | sed 's/\s*1\s\s*\([0-9]*\)B\s.*/\1/'` /dev/loop2 /dev/loop1
+	#mkfs.ext4 /dev/loop2
+	
+	mv $@_base $@
+	losetup /dev/loop1 $@
+	losetup -o `parted $@ unit B print | grep "\s\s*1\s\s*.*" | sed 's/\s*1\s\s*\([0-9]*\)B\s.*/\1/'` /dev/loop2 /dev/loop1
+	
+	mkdir -p temp_mount
+	mount /dev/loop2 temp_mount
+	make umount
+	rsync -ax --exclude="/usr/src/" --exclude=/tmp --exclude=/var/tmp --exclude=/boot/*.old $(CHROOT)/* temp_mount
+	#cp -a $(CHROOT)/* temp_mount
+	echo -e "device (hd0) $(RAW_IMAGE)\nroot (hd0,0)\nsetup (hd0)" | grub --device-map=/dev/null --batch
+	sync
+	umount temp_mount
+	rm -r temp_mount
+	sleep 3
+	losetup -d /dev/loop2
+	sleep 3
+	losetup -d /dev/loop1
+	
+	
+vdi: $(RAW_IMAGE)
+	qemu-img convert -f raw -t none -O vdi $(RAW_IMAGE) $(VDI_IMAGE)
+	sync
+	chmod a+rw $(VDI_IMAGE)
+	rm $(RAW_IMAGE)
+	
+vmdk: $(RAW_IMAGE)
+	qemu-img convert -f raw -t none  -O vmdk $(RAW_IMAGE) $(VMDK_IMAGE)
+	sync
+	chmod a+rw $(VMDK_IMAGE)
+	rm $(RAW_IMAGE)
+ 
+clean_images:
+	rm -f image.raw image.vmdk image.vdi
+
+iso:
+	mkisofs -o $(NAME).iso -v -J -D -R -iso-level 3 -A $(NAME) -V $(NAME) -no-emul-boot -boot-info-table -boot-load-size 4 -b $(NAME)/boot/isolinux.bin -c $(NAME)/boot/isolinux.boot $(ROOTDIR)
+
+
+chroot: mounts
+	$(inroot)

@@ -1,0 +1,49 @@
+
+include Makefile.base
+
+#live: base ntfs3g aufs3 mksquashfs aufs-util
+live: base ntfs3g mksquashfs aufs-util lsof cleanup_live_script
+	@echo "$@ DONE"
+	@touch $@ 
+
+ntfs3g: kernel
+	@make mounts > /dev/null
+	FEATURES="-sandbox" $(install) sys-fs/fuse
+	$(install) ntfs3g
+	@touch $@
+	
+mksquashfs: base_root
+	@make mounts > /dev/null
+	$(install) squashfs-tools
+	if test -e $(CHROOT)/usr/bin/mksquashfs_script; then \
+	mv $(CHROOT)/usr/bin/mksquashfs $(CHROOT)/usr/bin/mksquashfs_bin; \
+	cp $(CHROOT)/usr/bin/mksquashfs_script $(CHROOT)/usr/bin/mksquashfs; \
+	fi
+	@touch $@
+
+lsof: base_root
+	@make mounts > /dev/null
+	$(install) lsof
+	@touch $@
+	
+aufs-util: kernel
+	@make mounts > /dev/null
+	$(install) aufs-util
+	@touch $@
+
+aufs3: kernel
+	@make mounts > /dev/null
+	if test ! -L $(CHROOT)/usr/src/linux; then make kernel; fi
+	if ! grep aufs3 $(CHROOT)/etc/portage/package.keywords; then echo "sys-fs/aufs3" >> $(CHROOT)/etc/portage/package.keywords; fi
+	$(inroot) emerge aufs3
+	$(inroot) genkernel --oldconfig all;
+	if ! -f $@; then touch $@; fi
+
+cleanup_live_script:
+	@make mounts > /dev/null
+	$(inroot) rm /etc/runlevels/shutdown/*
+	$(inroot) ln -s /etc/init.d/cleanup_live /etc/runlevels/shutdown/cleanup_live
+	@touch $@	
+	
+clean_live:
+	rm -f live ntfs3g mksquashfs aufs3 cleanup_live_script aufs-util lsof

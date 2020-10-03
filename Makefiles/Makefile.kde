@@ -1,0 +1,15 @@
+gnometemp: X java
+	@make mounts > /dev/null
+	#$(install) -u laptop-mode-tools alacarte nautilus gnome-desktop gnome-control-center gcalctool file-roller gdm gtkdialog
+	$(install) -u laptop-mode-tools alacarte nautilus gnome-desktop gnome-control-center gcalctool =file-roller-2.32.2 gdm gtkdialog \
+	evince gnome-session gnome-applets gnome-panel gnome-menus gnome-icon-theme gnome-terminal gnome-themes zenity \
+	startup-notification gnome-nettool gnome-power-manager gconf-editor gedit gnome-keyring gnome-media \
+	net-misc/networkmanager-openvpn net-misc/networkmanager-pptp net-misc/networkmanager-vpnc gnome-bluetooth nm-applet yasm
+	$(inroot) rc-update add laptop_mode default
+	@touch $@
+	
+kde: X java
+	@make mounts > /dev/null
+	$(install) -u laptop-mode-tools kdm kdialog okular konsole kwrite net-misc/networkmanager-openvpn net-misc/networkmanager-pptp net-misc/networkmanager-vpnc
+	$(inroot) rc-update add laptop_mode default
+	

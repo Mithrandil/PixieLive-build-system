@@ -1,0 +1,50 @@
+.PHONY: .PHONY kernel-rebuild kernel-modules
+
+kernel_sources: base_root 
+	@make mounts > /dev/null
+	rm -f $(CHROOT)/usr/src/linux
+	$(install) genkernel $(GENTOO_KERNEL)
+	$(inroot) sed -i 's/CONFIG_FEATURE_MOUNT_NFS=y/CONFIG_FEATURE_MOUNT_NFS=n/g' /usr/share/genkernel/defaults/busy-config
+	$(inroot) sed -i 's/#\s*MAKEOPTS="-j.*"/MAKEOPTS="-j$(THREADS)"/g' /etc/genkernel.conf
+	$(inroot) sed -i 's/#\s*SYMLINK=".*"/SYMLINK="yes"/g' /etc/genkernel.conf
+	@touch $@
+	
+kernel: kernel_sources
+	@make mounts > /dev/null
+#if test ! -L $(CHROOT)/usr/src/linux; then make kernel_sources; fi
+	if test -d $(CHROOT)/etc/kernels; then \
+	cp -f `ls -v $(CHROOT)/etc/kernels/kernel-config-* | tail -n 1` $(CHROOT)/usr/src/linux/.config; \
+	$(inroot) genkernel --oldconfig all; \
+	else \
+	$(inroot) genkernel --menuconfig all; \
+	fi
+	$(install) linux-firmware
+	$(install) grub
+	#echo -e "default 0\ntimeout 5\n\ntitle=Gentoo-Virtual\nroot (hd0,0)\nkernel /boot/kernel root=/dev/ram0 real_root=/dev/sda1 \ninitrd /boot/initramfs" > $(CHROOT)/boot/grub/grub.conf
+	@touch $@
+	
+#TODO: questo va rivisto, non sempre serve installare aufs3, emgd e virtualbox-guest-additions (tipo se non è live)
+#kernel-rebuild: kernel
+kernel-rebuild:
+	@make mounts > /dev/null
+	$(inroot) genkernel --menuconfig all
+	#$(install) aufs3
+	#$(inroot) genkernel --oldconfig all
+	$(install) virtualbox-guest-additions
+	make emgd
+	if test -f "B00_kernel_modules.lzm"; then \
+	make kernel-modules; \
+	fi
+	cp -a $(CHROOT)/boot $(CHROOT)_base
+	#cp -a $(CHROOT)/etc/kernels $(CHROOT)_base/etc
+	
+B00_kernel_modules.lzm: kernel
+	@make mount_linux-live > /dev/null
+	$(inroot) /bin/bash -c "cd /tmp/$(LINUXLIVEDIR); make -f Makefile.pkgs B00_kernel_modules.lzm; ./Kernel-sources" 
+
+kernel-modules:
+	$(inroot) /bin/bash -c "cd /tmp/$(LINUXLIVEDIR); rm -f B00_kernel_modules.lzm"
+	make B00_kernel_modules.lzm
+	
+clean_kernel:
+	rm -f kernel kernel_sources

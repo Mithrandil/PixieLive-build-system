@@ -1,0 +1,29 @@
+lamp: kernel
+	@make mounts > /dev/null
+	USE="setup apache2 gd mysql mysqli -X -java" $(install) apache php pure-ftpd mysql phpmyadmin
+	$(inroot) sed -i 's/#IS_CONFIGURED="yes"/IS_CONFIGURED="yes"/g' /etc/conf.d/pure-ftpd
+	$(inroot) emerge --config =`equery -q list mysql`
+	#$(inroot) mysql_secure_installation
+	$(inroot) sed -i 's/APACHE2_OPTS="\(.*\)"/APACHE2_OPTS="\1 -D PHP5"/' /etc/conf.d/apache2
+	$(inroot) cp /var/www/localhost/htdocs/phpmyadmin/{config.sample.inc.php,config.inc.php}
+	$(inroot) sed -i "s/cfg\['blowfish_secret'\] = ''/cfg\['blowfish_secret'\] = 'http'/" /var/www/localhost/htdocs/phpmyadmin/config.inc.php
+	$(inroot) rc-update add sshd default
+	$(inroot) rc-update add pure-ftpd default
+	$(inroot) rc-update add apache2 default
+	$(inroot) rc-update add mysql default
+	$(inroot) ln -fs /etc/init.d/net.lo /etc/init.d/net.eth0
+	echo "eth0_config=(\"dhcp\")" >> $(CHROOT)/etc/conf.d/net
+	$(inroot) rc-update add net.eth0 default
+	echo "echo Server IP: \`ifconfig eth0 | awk '/inet addr/ {print \$$2}' | cut -f2 -d:\` > /etc/issue" > $(CHROOT)/etc/local.d/issue.start
+	chmod a+x $(CHROOT)/etc/local.d/issue.start
+	@touch $@
+
+mono: lamp
+	@make mounts > /dev/null
+	USE="-X minimal -java" $(install) mod_mono mod_perl
+	$(inroot) sed -i 's/APACHE2_OPTS="\(.*\)"/APACHE2_OPTS="\1 -D MONO -D MONO_DEMO"/' /etc/conf.d/apache2
+	@touch $@ 
+
+clean_server: umount umount_base
+	rm -f lamp mono
+	

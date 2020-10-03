@@ -1,0 +1,3 @@
+scipy: 
+	$(install) -1 blas-reference lapack-reference cblas-reference
+	$(install) scipy

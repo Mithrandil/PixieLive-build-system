@@ -1,0 +1,149 @@
+MIRROR = http://mirror.switch.ch/ftp/mirror/gentoo
+SERVER_DIR = $(MIRROR)/releases/$(ARCH)/autobuilds/
+STAGE3_FILE = `grep $(SUBARCH) $(STAGE3TXT) | sed 's/.*\/\(.*\)/\1/' | awk '{print $$1}'`
+CONFIG_DIR = Starting-kit
+
+BLOCKSIZE = 256k
+
+#packager_pkg = packager_2012_08_08.tar.gz
+packager_pkg = packager.tar.gz
+
+#packager_srv = http://pixielive.org/development_packages/
+dropbox_dir = https://dl.dropbox.com/u/9588625/PixieLive
+packager_srv = $(dropbox_dir)
+
+packager_url = $(packager_srv)/$(packager_pkg)
+#LINUXLIVEDIR = linux-live-6.3.0
+LINUXLIVEDIR = linux-live-pixielive-4
+
+THREADS = 5
+GENTOO_PROFILE = /usr/portage/profiles/default/linux/$(ARCH)/13.0/
+GENTOO_KERNEL = gentoo-sources
+#GENTOO_KERNEL = aufs-sources
+HOSTNAME = pixielive
+
+last_kernel_config := ls $(CHROOT)/etc/kernels/kernel-config-* | tail -n 1
+
+#EXCLUDEBIN = --usepkg-exclude libxcb --usepkg-exclude python
+EXCLUDEBIN = --usepkg-exclude gentoo-sources --usepkg-exclude aufs-sources --usepkg-exclude ntfs3g --usepkg-exclude fuse --usepkg-exclude aufs3 --usepkg-exclude ati-drivers --usepkg-exclude networkmanager --usepkg-exclude nvidia-drivers --usepkg-exclude docbook-xml-dtd --usepkg-exclude virtualbox-guest-additions --usepkg-exclude xf86-video-virtualbox
+#--usepkg-exclude glibc
+USEPKG = --autounmask-keep-masks -Du -k --binpkg-respect-use=y -b --buildpkg-exclude gentoo-sources --buildpkg-exclude aufs-sources $(EXCLUDEBIN) --rebuild-if-new-ver 
+install := $(inroot) emerge $(USEPKG)
+
+KERNELVER := `ls $(CHROOT)/lib/modules/ | tail -n 1`
+
+base: base_root kernel 
+	@echo "$@ DONE"
+	@touch $@
+
+include Makefile.kernel
+
+include Makefile.mounts
+	
+base_root: stage3 etc_config profile_config
+	@make portage
+	@make mounts
+	#$(inroot) emerge-webrsync
+	#$(inroot) emerge --sync
+	$(inroot) emerge -u portage
+#if ! test -f portage-latest.tar.bz2; then wget $(MIRROR)/snapshots/portage-latest.tar.bz2; fi
+#USE="-java" $(install) "<dev-lang/python-3" 
+#USE="-java" $(install) gentoolkit setuptools
+#USE="-* ncurses xml" $(inroot) emerge dev-lang/python:2.7
+#$(inroot) eselect python set 1
+#$(inroot) python-updater
+	USE="-gnome-keyring -gtk -cairo -kde -gnome -qt4 -X -java -qt3support" $(install) -eD system
+	USE="-java" $(install) "<dev-lang/python-3" 
+	$(install) python-updater
+	$(inroot) python-updater
+	cp Starting-kit/etc/locale.gen $(CHROOT)/etc/
+	$(inroot) locale-gen
+	$(inroot) sed -i 's/replace-unmodified=no/replace-unmodified=yes/gi' /etc/dispatch-conf.conf
+	$(inroot) sed -i 's/replace-wscomments=no/replace-wscomments=yes/gi' /etc/dispatch-conf.conf
+	$(inroot) dispatch-conf
+	echo "root:toor" | $(inroot) chpasswd
+	sed -i "s/hostname=\".*\"/hostname=\"$(HOSTNAME)\"/" $(CHROOT)/etc/conf.d/hostname
+	@echo $(CHROOT) ready
+	@touch $@
+	
+stage1_unused:
+	mkdir -p $(CHROOT)/etc
+	emerge-webrsync
+	rm -f $(CONFIG_DIR)/etc/portage/make.profile
+	ln -sf /usr/portage/profiles/default/linux/x86/13.0/ $(CONFIG_DIR)/etc/portage/make.profile
+	ROOT=$(CHROOT) USE="-* build" linux32 -B emerge -1 --nodeps --config-root=$(CONFIG_DIR) baselayout
+	ROOT=$(CHROOT) USE="-* build" linux32 -B emerge -1 --config-root=$(CONFIG_DIR) `grep -v "\#" /usr/portage/profiles/default/linux/packages.build`
+	mkdir -p $(CHROOT)/dev
+	mkdir -p $(CHROOT)/proc
+	mkdir -p $(CHROOT)/misc
+	mkdir -p $(CHROOT)/media
+	mkdir -p $(CHROOT)/sys
+	mkdir -p $(CHROOT)/var/tmp
+	mkdir -p $(CHROOT)/usr/portage
+	@touch $@
+	
+stage3_new_unused: stage1 etc_config profile_config
+	@make portage
+	@make mounts
+	$(inroot) /usr/portage/scripts/bootstrap.sh
+	$(inroot) emerge -eD system
+	$(inroot) sed -i 's/replace-unmodified=no/replace-unmodified=yes/gi' /etc/dispatch-conf.conf
+	$(inroot) sed -i 's/replace-wscomments=no/replace-wscomments=yes/gi' /etc/dispatch-conf.conf
+	$(inroot) dispatch-conf
+	@touch $@
+	
+$(CHROOT): 
+	@make stage3
+	
+stage3: 
+	mkdir -p $(CHROOT)
+	wget $(SERVER_DIR)/$(STAGE3TXT) -O $(STAGE3TXT)
+	wget -c $(SERVER_DIR)/`grep $(SUBARCH) $(STAGE3TXT) |  awk '{print $$1}'`
+	tar xjpf $(STAGE3_FILE) --exclude ./dev --exclude ./proc -C $(CHROOT)
+	mkdir -p $(CHROOT)/dev
+	mkdir -p $(CHROOT)/proc
+	mkdir -p $(CHROOT)/misc
+	mkdir -p $(CHROOT)/media
+	mkdir -p $(CHROOT)/sys
+	mkdir -p $(CHROOT)/var/tmp
+	mkdir -p $(CHROOT)/usr/portage
+	@touch $@
+	
+portage: $(CHROOT)
+	if [ ! -d portage ]; then \
+	rm -f portage-latest.tar.bz2; \
+	if [ ! -f portage-`date +%Y-%m-%d`.tar.bz2 ]; then \
+	wget $(MIRROR)/snapshots/portage-latest.tar.bz2 -O portage-`date +%Y-%m-%d`.tar.bz2; \
+	fi; \
+	tar -xpf portage-`date +%Y-%m-%d`.tar.bz2; \
+#	mv portage-latest.tar.bz2 portage-`date +%Y-%m-%d`.tar.bz2; \
+	fi
+	if test -d $(CONFIG_DIR)/usr/local; then \
+		cp -r $(CONFIG_DIR)/usr/local $(CHROOT)/usr; \
+	fi
+	@touch $@
+	
+etc_config: stage3
+	if test -d $(CONFIG_DIR)/etc; \
+	then \
+	cp -a $(CONFIG_DIR)/etc $(CHROOT)/; \
+	sed "s/CHOST=\".*\"/CHOST=\"$(CHOST)\"/g" -i $(CHROOT)/etc/portage/make.conf; \
+	sed "s/CFLAGS=\".*\"/CFLAGS=\"$(CFLAGS)\"/g" -i $(CHROOT)/etc/portage/make.conf; \
+	fi
+	if test -e $(CONFIG_DIR)/usr/bin/mksquashfs_script; \
+	then \
+	cp -f $(CONFIG_DIR)/usr/bin/mksquashfs_script $(CHROOT)/usr/bin; \
+	fi
+	if test ! -e $(CHROOT)/etc/resolv.conf; then cp -a /etc/resolv.conf $(CHROOT)/etc; fi
+	@touch $@
+	
+profile_config: stage3
+	@make portage
+	@make mounts
+	rm -f $(CHROOT)/etc/portage/make.profile
+	ln -sf $(GENTOO_PROFILE) $(CHROOT)/etc/portage/make.profile
+	@touch $@ 
+	
+clean_base: umount umount_base
+#rm -f portage
+	rm -f base stage3 base_root stage3_new_unused stage1_unused etc_config profile_config

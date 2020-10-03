@@ -1,0 +1,84 @@
+.PHONY: .PHONY umount umounts mount mounts mounts_no_pkg mounts_quickpkg
+
+umounts: umount
+
+umount: 
+	-make umount_base
+	@if mountpoint -q $(CHROOT)/proc; then umount $(CHROOT)/proc; fi
+	@if mountpoint -q $(CHROOT)/sys; then umount $(CHROOT)/sys; fi
+	#@if mountpoint -q $(CHROOT)/dev; then umount $(CHROOT)/dev; fi
+	@if mountpoint -q $(CHROOT)/dev; then umount `grep $(CHROOT)/dev /proc/mounts | cut -f2 -d" " | sort -r`; fi
+	@if mountpoint -q $(CHROOT)/var/tmp; then umount $(CHROOT)/var/tmp; fi
+	@if mountpoint -q $(CHROOT)/usr/portage/packages; then umount $(CHROOT)/usr/portage/packages; fi
+	@if mountpoint -q $(CHROOT)/usr/portage/distfiles; then umount $(CHROOT)/usr/portage/distfiles; fi
+	@if mountpoint -q $(CHROOT)/usr/portage; then umount $(CHROOT)/usr/portage; fi
+	@if mountpoint -q $(CHROOT)/tmp/$(LINUXLIVEDIR); then umount $(CHROOT)/tmp/$(LINUXLIVEDIR); fi
+
+mount: mounts
+	 
+mounts: mounts_no_pkg
+	@mkdir -p packages_$(ARCH)
+	@mkdir -p portage/packages
+	@if mountpoint -q $(CHROOT)/usr/portage/packages; then umount $(CHROOT)/usr/portage/packages; fi
+	@if ! mountpoint -q $(CHROOT)/usr/portage/packages; then mount -o bind packages_$(ARCH) $(CHROOT)/usr/portage/packages; fi
+	
+mounts_quickpkg: mounts_no_pkg
+	@mkdir -p quickpkgs_$(ARCH)
+	@mkdir -p portage/packages
+	@if mountpoint -q $(CHROOT)/usr/portage/packages; then umount $(CHROOT)/usr/portage/packages; fi
+	@if ! mountpoint -q $(CHROOT)/usr/portage/packages; then mount -o bind quickpkgs_$(ARCH) $(CHROOT)/usr/portage/packages; fi
+	
+mounts_no_pkg: 
+	@make $(CHROOT) 
+	@make portage
+	@mkdir -p $(CHROOT)/usr/portage
+	@make umount
+	@if ! mountpoint -q $(CHROOT)/proc; then mount -t proc none $(CHROOT)/proc; fi
+	#@if ! mountpoint -q $(CHROOT)/dev; then mount --bind /dev $(CHROOT)/dev; fi
+	@if ! mountpoint -q $(CHROOT)/dev; then mount --rbind /dev $(CHROOT)/dev; fi
+	@if ! mountpoint -q $(CHROOT)/sys; then mount --bind /sys $(CHROOT)/sys; fi
+	@if ! mountpoint -q $(CHROOT)/var/tmp; then mount -o bind /var/tmp $(CHROOT)/var/tmp; fi
+	@if ! mountpoint -q $(CHROOT)/usr/portage; then mount -o bind portage $(CHROOT)/usr/portage; fi
+	@mkdir -p $(CHROOT)/usr/portage/distfiles
+	@if ! mountpoint -q $(CHROOT)/usr/portage/distfiles; then mount -o bind /usr/portage/distfiles $(CHROOT)/usr/portage/distfiles; fi
+	
+$(LINUXLIVEDIR): 
+	@make $(CHROOT)
+	if ! test -d $(LINUXLIVEDIR); then \
+        #wget -c http://pixielive.org/development_packages/$(LINUXLIVEDIR)_2012_07_24.tar.bz2; \
+        wget -c $(dropbox_dir)/$(LINUXLIVEDIR).tar.xz; \
+        tar -xf $(LINUXLIVEDIR).tar.xz; \
+        rm $(LINUXLIVEDIR).tar.xz; \
+        fi
+	mkdir -p $(CHROOT)/tmp/$(LINUXLIVEDIR)
+
+mount_linux-live: 
+	@make $(LINUXLIVEDIR)
+	@make mounts_quickpkg
+	@if ! mountpoint -q $(CHROOT)/tmp/$(LINUXLIVEDIR); then mount -o bind $(LINUXLIVEDIR) $(CHROOT)/tmp/$(LINUXLIVEDIR); fi
+	
+mount_base:
+	@make umount > /dev/null
+	@if ! mountpoint -q $(CHROOT)_base/proc; then mount -t proc none $(CHROOT)_base/proc; fi
+	@if ! mountpoint -q $(CHROOT)_base/dev; then mount --rbind /dev $(CHROOT)_base/dev; fi
+	@if ! mountpoint -q $(CHROOT)_base/dev; then mount --bind /dev $(CHROOT)_base/dev; fi
+	@if ! mountpoint -q $(CHROOT)_base/sys; then mount --bind /sys $(CHROOT)_base/sys; fi
+	#@if ! mountpoint -q $(CHROOT)_base/var/tmp; then mount -o bind /var/tmp $(CHROOT)/var/tmp; fi
+	@if ! mountpoint -q $(CHROOT)_base/usr/portage; then mount -o bind portage $(CHROOT)_base/usr/portage; fi
+	if ! test -d $(LINUXLIVEDIR); then \
+	wget -c http://pixielive.org/development_packages/$(LINUXLIVEDIR)_2012_07_24.tar.bz2; \
+	tar -xf $(LINUXLIVEDIR)_2012_07_24.tar.bz2; \
+	fi
+	mkdir -p $(CHROOT)_base/tmp/$(LINUXLIVEDIR)
+	if ! mountpoint -q $(CHROOT)_base/tmp/$(LINUXLIVEDIR); then mount -o bind $(LINUXLIVEDIR) $(CHROOT)_base/tmp/$(LINUXLIVEDIR); fi
+	
+umount_base: 
+	#-make umount
+	@if mountpoint -q $(CHROOT)_base/proc; then umount $(CHROOT)_base/proc; fi
+	@if mountpoint -q $(CHROOT)_base/sys; then umount $(CHROOT)_base/sys; fi
+	#@if mountpoint -q $(CHROOT)_base/dev; then umount $(CHROOT)_base/dev; fi
+	@if mountpoint -q $(CHROOT)/dev; then umount `grep $(CHROOT)_base/dev /proc/mounts | cut -f2 -d" " | sort -r`; fi
+	@if mountpoint -q $(CHROOT)_base/var/tmp; then umount $(CHROOT)_base/var/tmp; fi
+	@if mountpoint -q $(CHROOT)_base/usr/portage/packages; then umount $(CHROOT)_base/usr/portage/packages; fi
+	@if mountpoint -q $(CHROOT)_base/usr/portage; then umount $(CHROOT)_base/usr/portage; fi
+	@if mountpoint -q $(CHROOT)_base/tmp/$(LINUXLIVEDIR); then umount $(CHROOT)_base/tmp/$(LINUXLIVEDIR); fi 

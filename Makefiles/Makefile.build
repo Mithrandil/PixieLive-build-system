@@ -1,0 +1,59 @@
+.PHONY: .PHONY build build_kernel newdistro
+
+build: 
+	@make $(LINUXLIVEDIR)
+	@make mount_base > /dev/null
+	rm -rf $(CHROOT)_base/tmp/live_data_*
+	rm -rf $(CHROOT)_base/tmp/initrd_*
+	rm -f $(LINUXLIVEDIR)/zetc.lzm
+	mksquashfs $(CHROOT)_mod $(LINUXLIVEDIR)/zetc.lzm -comp xz -b $(BLOCKSIZE)
+	cp -r Live-kit/* $(LINUXLIVEDIR)
+	cp -r Live-kit/.config $(LINUXLIVEDIR)
+	linux32 -B chroot $(CHROOT)_base /bin/bash -c "cd /tmp/$(LINUXLIVEDIR); ln modules-4/*.lzm ./; ./build"
+	@make umount_base > /dev/null
+
+build_initrd:
+	@make mount_base > /dev/null
+	cp -r Live-kit/* $(LINUXLIVEDIR)
+	cp -r Live-kit/.config $(LINUXLIVEDIR)
+	cp -a $(CHROOT)/boot $(CHROOT)_base
+	rm -rf $(CHROOT)_base/lib/modules
+	cp -a $(CHROOT)/lib/modules $(CHROOT)_base/lib
+	rm -f $(LINUXLIVEDIR)/B00_kernel_modules.lzm
+	linux32 -B chroot $(CHROOT)_base /bin/bash -c "cd /tmp/$(LINUXLIVEDIR); make -f Makefile.pkgs B00_kernel_modules.lzm"
+	rm -rf $(CHROOT)_base/lib/firmware
+	cp -a $(CHROOT)/lib/firmware $(CHROOT)_base/lib
+	rm -f $(LINUXLIVEDIR)/B01_linux_firmware.lzm
+	linux32 -B chroot $(CHROOT)_base /bin/bash -c "cd /tmp/$(LINUXLIVEDIR); make -f Makefile.pkgs B01_linux_firmware.lzm"
+	linux32 -B chroot $(CHROOT)_base /bin/bash -c "cd /tmp/$(LINUXLIVEDIR); ./build_initrd"
+	mkdir -p $(CHROOT)_base/tmp/newkernel/PixieLive4/boot
+	cp -L $(CHROOT)_base/boot/kernel $(CHROOT)_base/tmp/newkernel/PixieLive4/boot/vmlinuz
+	mv $(CHROOT)_base/tmp/PixieLive4-initramfs-*.img $(CHROOT)_base/tmp/newkernel/PixieLive4/boot/initrfs.img
+	ln $(LINUXLIVEDIR)/B01_linux_firmware.lzm $(CHROOT)_base/tmp/newkernel/PixieLive4
+	ln $(LINUXLIVEDIR)/B00_kernel_modules.lzm $(CHROOT)_base/tmp/newkernel/PixieLive4
+	tar -cf $(CHROOT)_base/tmp/PixieLive4-kernel-`date +%Y-%m-%d-%H-%M`.tar $(CHROOT)_base/tmp/newkernel/PixieLive4
+	rm -r $(CHROOT)_base/tmp/newkernel
+	@make umount_base > /dev/null
+	
+build_kernel:
+	@make mount_base > /dev/null
+	rm -rf $(CHROOT)_base/tmp/live_data_*
+	rm -rf $(CHROOT)_base/tmp/initrd_*
+	linux32 -B chroot $(CHROOT)_base /bin/bash -c "cd /tmp/$(LINUXLIVEDIR); ./build_kernel"
+	@make umount_base > /dev/null
+	
+newdistro:
+	@make umount umount_base
+	@echo "Copia in corso, aspetta..."
+	@mkdir -p /misc
+	#mount /dev/disk/by-id/usb-EXIGO_Flash_Disk_279409960621-0\:0-part1 /misc
+	#mount /dev/disk/by-id/usb-Generic_STORAGE_DEVICE_000000000207-0\:0-part1 /misc
+	@mount /dev/sdf1 /misc
+	rm -rf /misc/boot
+	rm -fr /misc/PixieLive3-beta2	
+	cp -r $(CHROOT)_base/tmp/live_data_*/* /misc
+	sync
+	/misc/boot/bootinst.sh
+	rm -rf $(CHROOT)_base/tmp/live_data_*
+	@umount /misc
+	@echo "Ready!" 

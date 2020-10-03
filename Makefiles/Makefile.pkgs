@@ -1,0 +1,85 @@
+SETTINGS_PER_PACKAGE = settings_per_package
+SETTINGS_PER_PACKAGE_PKG = $(SETTINGS_PER_PACKAGE).tar.gz
+PKGBASENAME := sed 's/[A-Z][0-9][0-9]_\(.*\)\.lzm/\1/g' | sed 's/\(.*\)\(\(-[0-9][0-9]*\).*\(-r[0-9][0-9]*\)*\)/\1/g'
+
+.PHONY: .PHONY pkgs build_latex_settings
+
+$(LINUXLIVEDIR)/Makefile.pkgs:
+	@make $(LINUXLIVEDIR)
+	@make mount_linux-live > /dev/null
+	$(inroot) rm -f /tmp/$(packager_pkg)
+	$(inroot) wget $(packager_url) -O /tmp/$(packager_pkg)
+	$(inroot) rm -rf /tmp/$(LINUXLIVEDIR)/packager
+	$(inroot) tar -xf /tmp/$(packager_pkg) -C /tmp/$(LINUXLIVEDIR)
+	cp installed_packages.list $(CHROOT)/tmp/$(LINUXLIVEDIR)/packager
+	$(inroot) /bin/bash -c "cd /tmp/$(LINUXLIVEDIR)/packager; python3 packager.py"
+	
+$(LINUXLIVEDIR)/$(SETTINGS_PER_PACKAGE):
+	@make $(LINUXLIVEDIR)
+	@make mount_linux-live > /dev/null
+	$(inroot) rm -f /tmp/$(SETTINGS_PER_PACKAGE_PKG)
+	$(inroot) wget $(dropbox_dir)/$(SETTINGS_PER_PACKAGE_PKG) -O /tmp/$(SETTINGS_PER_PACKAGE_PKG)
+	$(inroot) rm -rf /tmp/$(LINUXLIVEDIR)/$(SETTINGS_PER_PACKAGE)
+	$(inroot) tar -xf /tmp/$(SETTINGS_PER_PACKAGE_PKG) -C /tmp/$(LINUXLIVEDIR)
+	$(inroot) chown -R root:root /tmp/$(LINUXLIVEDIR)/$(SETTINGS_PER_PACKAGE)
+	for i in $(LINUXLIVEDIR)/$(SETTINGS_PER_PACKAGE)/*/home/pixielive; do chown -R 1000:1000 "$$i"; done
+	for i in $(LINUXLIVEDIR)/$(SETTINGS_PER_PACKAGE)/*/etc/init.d/*; do chmod 755 "$$i"; done
+	for i in $(LINUXLIVEDIR)/$(SETTINGS_PER_PACKAGE)/*/usr/share/applications/*; do chmod 644 "$$i"; done
+
+pkgs: $(LINUXLIVEDIR)/Makefile.pkgs $(LINUXLIVEDIR)/$(SETTINGS_PER_PACKAGE)
+	make build_latex_settings
+	@make mount_linux-live > /dev/null
+	$(inroot) /bin/bash -c "cd /tmp/$(LINUXLIVEDIR); make -f Makefile.pkgs all"
+	
+kernel-source-pkgs:
+	@make $(LINUXLIVEDIR)
+	@make mount_linux-live > /dev/null
+	$(inroot) /bin/bash -c "cd /tmp/$(LINUXLIVEDIR); ./Kernel-sources"
+
+$(LINUXLIVEDIR)/zlatex-settings.lzm: $(CHROOT) latex 
+	@make $(LINUXLIVEDIR)
+	@make umount > /dev/null
+	@make mount > /dev/null
+	$(inroot) texmf-update
+	rm -rf temp
+	rm -rf $(LINUXLIVEDIR)/zlatex-settings.lzm
+	mkdir -p temp/var/lib/texmf/fonts/map/pdftex
+	mkdir -p temp/var/lib/texmf/fonts/map/dvips
+	
+	mkdir -p temp/var/lib/texmf/web2c
+	
+	mkdir -p temp/usr/share/texmf-site
+	mkdir -p temp/usr/share/texmf-dist
+	
+	mkdir -p temp/usr/share/texmf/tex/generic
+	
+	mkdir -p temp/etc/texmf
+	
+	cp -fa $(CHROOT)/var/lib/texmf/fonts/map/pdftex/updmap temp/var/lib/texmf/fonts/map/pdftex
+	cp -fa $(CHROOT)/var/lib/texmf/fonts/map/dvips/updmap temp/var/lib/texmf/fonts/map/dvips
+	
+	cp -fa $(CHROOT)/var/lib/texmf/web2c/xetex temp/var/lib/texmf/web2c
+	cp -fa $(CHROOT)/var/lib/texmf/web2c/tex temp/var/lib/texmf/web2c
+	cp -fa $(CHROOT)/var/lib/texmf/web2c/pdftex temp/var/lib/texmf/web2c
+	cp -fa $(CHROOT)/var/lib/texmf/web2c/metafont temp/var/lib/texmf/web2c
+	cp -fa $(CHROOT)/var/lib/texmf/ls-R temp/var/lib/texmf
+	
+	cp -fa $(CHROOT)/usr/share/texmf-site/ls-R temp/usr/share/texmf-site
+	cp -fa $(CHROOT)/usr/share/texmf-dist/ls-R temp/usr/share/texmf-dist/
+	cp -fa $(CHROOT)/usr/share/texmf/ls-R temp/usr/share/texmf
+	
+	cp -fa $(CHROOT)/usr/share/texmf/tex/generic/config temp/usr/share/texmf/tex/generic
+	
+	cp -fa $(CHROOT)/etc/texmf/ls-R temp/etc/texmf
+	
+	cp -fa $(CHROOT)/etc/texmf/web2c temp/etc/texmf
+	
+	#questo emerge e' una boiata, vincola lo script a gentoo
+	emerge -u squashfs-tools
+	mksquashfs temp $(LINUXLIVEDIR)/zlatex-settings.lzm -comp xz -b $(BLOCKSIZE)
+	rm -r temp
+	
+build_latex_settings: 
+	@make $(LINUXLIVEDIR)
+	if test -f latex; then make $(LINUXLIVEDIR)/zlatex-settings.lzm; fi
+	

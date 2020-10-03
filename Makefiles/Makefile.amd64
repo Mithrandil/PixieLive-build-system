@@ -1,0 +1,10 @@
+ARCH = amd64
+SUBARCH = stage3-amd64-2
+CHROOT = $(PWD)/newroot_$(ARCH)
+inroot := chroot $(CHROOT)
+STAGE3TXT = latest-stage3-amd64.txt
+
+CHOST=x86_64-pc-linux-gnu
+CFLAGS=-mtune=generic -O2 -pipe
+
+include Makefile.common
